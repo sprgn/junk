@@ -1,0 +1,61 @@
+import lombok.extern.slf4j.Slf4j;
+import org.quartz.SchedulerException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+//import org.springframework.scheduling.annotation.EnableScheduling;
+//import org.springframework.scheduling.annotation.Scheduled;
+
+import org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean;
+import org.springframework.scheduling.quartz.SchedulerFactoryBean;
+import org.springframework.scheduling.quartz.SimpleTriggerFactoryBean;
+
+import javax.annotation.PreDestroy;
+
+@Configuration
+//@EnableScheduling
+@Slf4j
+public class ScheduledTasks {
+
+    @Value("${fds.delay.value}")
+    private int delay;
+
+    SchedulerFactoryBean scheduler;
+
+
+    @Bean
+    public MethodInvokingJobDetailFactoryBean refresh1() {
+        MethodInvokingJobDetailFactoryBean obj = new MethodInvokingJobDetailFactoryBean();
+        obj.setTargetBeanName("branchCountService");
+        obj.setTargetMethod("fetchICSBranchCount");
+        return obj;
+    }
+
+    @Bean
+    public SimpleTriggerFactoryBean refresh1TriggerBean(){
+        SimpleTriggerFactoryBean stFactory = new SimpleTriggerFactoryBean();
+        stFactory.setJobDetail(refresh1().getObject());
+        stFactory.setStartDelay(3000);
+        stFactory.setRepeatInterval(30000);
+        return stFactory;
+    }
+
+
+    @Bean
+    public SchedulerFactoryBean schedulerFactoryBean() {
+        scheduler = new SchedulerFactoryBean();
+        scheduler.setTriggers(refresh1TriggerBean().getObject());
+        return scheduler;
+    }
+
+    @PreDestroy
+    public void destroy(){
+        scheduler.stop();
+        try {
+            scheduler.destroy();
+        } catch (SchedulerException e) {
+            log.error(e.getMessage(),e);
+        }
+    }
+}
